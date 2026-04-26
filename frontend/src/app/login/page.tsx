@@ -250,23 +250,6 @@ export default function LoginPage() {
             </div>
           </div>
 
-          {/* Demo credentials */}
-          <div className="mt-4 p-4 bg-white/90 border border-gray-100 rounded-2xl shadow-sm">
-            <p className="font-semibold text-gray-700 text-xs mb-2">Demo credentials</p>
-            <div className="space-y-1 text-xs text-gray-500">
-              {([
-                ['Admin', 'admin@school.com'],
-                ['Teacher', 'teacher@school.com'],
-                ['Student', 'student@school.com'],
-              ] as [string, string][]).map(([label, email]) => (
-                <p key={label}>
-                  {label}: <span className="font-mono text-gray-700">{email}</span>
-                  <span className="font-mono text-gray-500"> / Admin@123</span>
-                </p>
-              ))}
-            </div>
-          </div>
-
           <p className="text-center text-xs text-gray-300 mt-5">Available 24/7 · Help &amp; Support</p>
         </div>
       </div>
