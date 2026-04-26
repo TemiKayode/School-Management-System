@@ -1,0 +1,489 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                String                    @id @default(uuid())
+  name              String
+  email             String                    @unique
+  password          String
+  role              Role
+  phone             String?
+  avatar            String?
+  mfaEnabled        Boolean                   @default(false)
+  mfaSecret         String?
+  resetToken        String?
+  resetTokenExpires DateTime?
+  oauthProvider     OAuthProvider?
+  oauthId           String?
+  consentGiven      Boolean                   @default(false)
+  consentAt         DateTime?
+  createdAt         DateTime                  @default(now())
+  updatedAt         DateTime                  @updatedAt
+  announcements     Announcement[]            @relation("AnnouncementAuthor")
+  assignments       Assignment[]              @relation("AssignmentCreator")
+  auditLogs         AuditLog[]
+  conversations     ConversationParticipant[]
+  courseEnrollments CourseEnrollment[]
+  sentMessages      Message[]                 @relation("SentMessages")
+  notifications     Notification[]
+  pushSubscriptions PushSubscription[]
+  student           Student?
+  teacher           Teacher?
+
+  @@map("users")
+}
+
+model Student {
+  id               String                 @id @default(uuid())
+  userId           String                 @unique
+  admissionNo      String                 @unique
+  dateOfBirth      DateTime?
+  gender           String?
+  address          String?
+  parentName       String?
+  parentEmail      String?
+  parentPhone      String?
+  classId          String?
+  transportRouteId String?
+  enrolledAt       DateTime               @default(now())
+  createdAt        DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
+  submissions      AssignmentSubmission[]
+  attendance       Attendance[]
+  borrowings       BookBorrowing[]
+  examResults      ExamResult[]
+  feePayments      FeePayment[]
+  class            Class?                 @relation(fields: [classId], references: [id])
+  transportRoute   TransportRoute?        @relation(fields: [transportRouteId], references: [id])
+  user             User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("students")
+}
+
+model Teacher {
+  id            String          @id @default(uuid())
+  userId        String          @unique
+  employeeNo    String          @unique
+  department    String?
+  qualification String?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  classes       Class[]
+  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  timetable     TimetableSlot[]
+  subjects      Subject[]       @relation("TeacherSubjects")
+
+  @@map("teachers")
+}
+
+model Class {
+  id           String          @id @default(uuid())
+  name         String          @unique
+  grade        String
+  section      String?
+  teacherId    String?
+  academicYear String
+  createdAt    DateTime        @default(now())
+  assignments  Assignment[]
+  attendance   Attendance[]
+  teacher      Teacher?        @relation(fields: [teacherId], references: [id])
+  exams        Exam[]
+  students     Student[]
+  timetable    TimetableSlot[]
+  subjects     Subject[]       @relation("ClassSubjects")
+
+  @@map("classes")
+}
+
+model Subject {
+  id          String          @id @default(uuid())
+  name        String
+  code        String          @unique
+  credits     Int             @default(1)
+  assignments Assignment[]
+  courses     Course[]
+  exams       Exam[]
+  timetable   TimetableSlot[]
+  classes     Class[]         @relation("ClassSubjects")
+  teachers    Teacher[]       @relation("TeacherSubjects")
+
+  @@map("subjects")
+}
+
+model TimetableSlot {
+  id        String    @id @default(uuid())
+  classId   String
+  subjectId String
+  teacherId String
+  dayOfWeek DayOfWeek
+  startTime String
+  endTime   String
+  room      String?
+  class     Class     @relation(fields: [classId], references: [id])
+  subject   Subject   @relation(fields: [subjectId], references: [id])
+  teacher   Teacher   @relation(fields: [teacherId], references: [id])
+
+  @@map("timetable_slots")
+}
+
+model Attendance {
+  id         String           @id @default(uuid())
+  studentId  String
+  classId    String
+  date       DateTime         @db.Date
+  status     AttendanceStatus @default(PRESENT)
+  note       String?
+  markedById String?
+  createdAt  DateTime         @default(now())
+  class      Class            @relation(fields: [classId], references: [id])
+  student    Student          @relation(fields: [studentId], references: [id])
+
+  @@unique([studentId, date])
+  @@map("attendance")
+}
+
+model Exam {
+  id          String       @id @default(uuid())
+  title       String
+  subjectId   String
+  classId     String
+  examDate    DateTime
+  duration    Int
+  totalMarks  Int
+  passMark    Int
+  description String?
+  createdAt   DateTime     @default(now())
+  results     ExamResult[]
+  class       Class        @relation(fields: [classId], references: [id])
+  subject     Subject      @relation(fields: [subjectId], references: [id])
+
+  @@map("exams")
+}
+
+model ExamResult {
+  id        String   @id @default(uuid())
+  examId    String
+  studentId String
+  score     Float
+  grade     String?
+  remarks   String?
+  createdAt DateTime @default(now())
+  exam      Exam     @relation(fields: [examId], references: [id])
+  student   Student  @relation(fields: [studentId], references: [id])
+
+  @@unique([examId, studentId])
+  @@map("exam_results")
+}
+
+model Assignment {
+  id          String                 @id @default(uuid())
+  title       String
+  description String?
+  subjectId   String
+  classId     String
+  createdById String
+  dueDate     DateTime
+  totalPoints Int                    @default(100)
+  fileUrl     String?
+  createdAt   DateTime               @default(now())
+  submissions AssignmentSubmission[]
+  class       Class                  @relation(fields: [classId], references: [id])
+  createdBy   User                   @relation("AssignmentCreator", fields: [createdById], references: [id])
+  subject     Subject                @relation(fields: [subjectId], references: [id])
+
+  @@map("assignments")
+}
+
+model AssignmentSubmission {
+  id           String     @id @default(uuid())
+  assignmentId String
+  studentId    String
+  content      String?
+  fileUrl      String?
+  score        Float?
+  feedback     String?
+  submittedAt  DateTime?
+  gradedAt     DateTime?
+  createdAt    DateTime   @default(now())
+  assignment   Assignment @relation(fields: [assignmentId], references: [id])
+  student      Student    @relation(fields: [studentId], references: [id])
+
+  @@unique([assignmentId, studentId])
+  @@map("assignment_submissions")
+}
+
+model Fee {
+  id           String       @id @default(uuid())
+  name         String
+  amount       Float
+  dueDate      DateTime?
+  description  String?
+  academicYear String
+  createdAt    DateTime     @default(now())
+  payments     FeePayment[]
+
+  @@map("fees")
+}
+
+model FeePayment {
+  id                    String        @id @default(uuid())
+  studentId             String
+  feeId                 String
+  amount                Float
+  method                PaymentMethod
+  status                PaymentStatus @default(PENDING)
+  stripePaymentIntentId String?
+  paypalOrderId         String?
+  flutterwaveRef        String?
+  transactionRef        String?
+  createdAt             DateTime      @default(now())
+  fee                   Fee           @relation(fields: [feeId], references: [id])
+  student               Student       @relation(fields: [studentId], references: [id])
+
+  @@map("fee_payments")
+}
+
+model Book {
+  id              String          @id @default(uuid())
+  title           String
+  author          String
+  isbn            String?         @unique
+  category        String?
+  totalCopies     Int             @default(1)
+  availableCopies Int             @default(1)
+  publishedYear   Int?
+  createdAt       DateTime        @default(now())
+  borrowings      BookBorrowing[]
+
+  @@map("books")
+}
+
+model BookBorrowing {
+  id         String    @id @default(uuid())
+  bookId     String
+  studentId  String
+  borrowedAt DateTime  @default(now())
+  dueDate    DateTime
+  returnedAt DateTime?
+  createdAt  DateTime  @default(now())
+  book       Book      @relation(fields: [bookId], references: [id])
+  student    Student   @relation(fields: [studentId], references: [id])
+
+  @@map("book_borrowings")
+}
+
+model TransportRoute {
+  id          String    @id @default(uuid())
+  name        String
+  description String?
+  driverName  String?
+  driverPhone String?
+  vehicleNo   String?
+  capacity    Int       @default(20)
+  createdAt   DateTime  @default(now())
+  students    Student[]
+
+  @@map("transport_routes")
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  title     String
+  message   String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+}
+
+model Conversation {
+  id           String                    @id @default(uuid())
+  createdAt    DateTime                  @default(now())
+  updatedAt    DateTime                  @updatedAt
+  participants ConversationParticipant[]
+  messages     Message[]
+
+  @@map("conversations")
+}
+
+model ConversationParticipant {
+  id             String       @id @default(uuid())
+  conversationId String
+  userId         String
+  conversation   Conversation @relation(fields: [conversationId], references: [id])
+  user           User         @relation(fields: [userId], references: [id])
+
+  @@unique([conversationId, userId])
+  @@map("conversation_participants")
+}
+
+model Message {
+  id             String       @id @default(uuid())
+  conversationId String
+  senderId       String
+  content        String
+  createdAt      DateTime     @default(now())
+  conversation   Conversation @relation(fields: [conversationId], references: [id])
+  sender         User         @relation("SentMessages", fields: [senderId], references: [id])
+
+  @@map("messages")
+}
+
+model Announcement {
+  id        String    @id @default(uuid())
+  title     String
+  content   String
+  audience  String[]
+  pinned    Boolean   @default(false)
+  authorId  String
+  expiresAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  author    User      @relation("AnnouncementAuthor", fields: [authorId], references: [id])
+
+  @@map("announcements")
+}
+
+model Course {
+  id          String             @id @default(uuid())
+  title       String
+  description String?
+  thumbnail   String?
+  status      CourseStatus       @default(DRAFT)
+  authorId    String
+  subjectId   String?
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  enrollments CourseEnrollment[]
+  subject     Subject?           @relation(fields: [subjectId], references: [id])
+  lessons     Lesson[]
+
+  @@map("courses")
+}
+
+model Lesson {
+  id        String           @id @default(uuid())
+  courseId  String
+  title     String
+  content   String?
+  videoUrl  String?
+  duration  Int?
+  order     Int              @default(0)
+  createdAt DateTime         @default(now())
+  progress  LessonProgress[]
+  course    Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@map("lessons")
+}
+
+model CourseEnrollment {
+  id          String    @id @default(uuid())
+  courseId    String
+  userId      String
+  enrolledAt  DateTime  @default(now())
+  completedAt DateTime?
+  course      Course    @relation(fields: [courseId], references: [id])
+  user        User      @relation(fields: [userId], references: [id])
+
+  @@unique([courseId, userId])
+  @@map("course_enrollments")
+}
+
+model LessonProgress {
+  id          String   @id @default(uuid())
+  lessonId    String
+  userId      String
+  completed   Boolean  @default(false)
+  watchedSecs Int      @default(0)
+  updatedAt   DateTime @updatedAt
+  lesson      Lesson   @relation(fields: [lessonId], references: [id])
+
+  @@unique([lessonId, userId])
+  @@map("lesson_progress")
+}
+
+model PushSubscription {
+  id        String   @id @default(uuid())
+  userId    String
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("push_subscriptions")
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  userId     String?
+  action     String
+  resource   String
+  resourceId String?
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+  user       User?    @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+enum Role {
+  ADMIN
+  TEACHER
+  STUDENT
+  PARENT
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LATE
+  EXCUSED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+enum PaymentMethod {
+  CASH
+  STRIPE
+  PAYPAL
+  MOBILE_MONEY
+  FLUTTERWAVE
+  BANK_TRANSFER
+}
+
+enum OAuthProvider {
+  GOOGLE
+  MICROSOFT
+}
+
+enum CourseStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum DayOfWeek {
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+}

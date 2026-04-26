@@ -1,0 +1,191 @@
+version: '3.9'
+
+services:
+  # ─── Core Data ──────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: sms_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: sms_user
+      POSTGRES_PASSWORD: sms_pass
+      POSTGRES_DB: school_db
+    ports: ['5432:5432']
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U sms_user -d school_db']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: sms_redis
+    restart: unless-stopped
+    ports: ['6379:6379']
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # ─── Application ────────────────────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: sms_backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://sms_user:sms_pass@postgres:5432/school_db?schema=public
+      REDIS_URL: redis://redis:6379
+    ports: ['5000:5000']
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: sms_frontend
+    restart: unless-stopped
+    depends_on: [backend]
+    env_file: .env
+    environment:
+      NEXT_PUBLIC_API_URL: /api/v1
+    ports: ['3000:3000']
+
+  nginx:
+    image: nginx:alpine
+    container_name: sms_nginx
+    restart: unless-stopped
+    depends_on: [backend, frontend]
+    ports: ['80:80', '443:443']
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+
+  # ─── Monitoring ─────────────────────────────────────────────────────────────
+  prometheus:
+    image: prom/prometheus:v2.52.0
+    container_name: sms_prometheus
+    restart: unless-stopped
+    ports: ['9090:9090']
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=15d'
+
+  grafana:
+    image: grafana/grafana:10.4.3
+    container_name: sms_grafana
+    restart: unless-stopped
+    ports: ['3001:3000']
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: 'false'
+      GF_SERVER_ROOT_URL: http://localhost:3001
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+    depends_on: [prometheus]
+
+  node-exporter:
+    image: prom/node-exporter:v1.8.1
+    container_name: sms_node_exporter
+    restart: unless-stopped
+    ports: ['9100:9100']
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.rootfs=/rootfs'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+
+  # ─── Logging (ELK Stack) ────────────────────────────────────────────────────
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.14.0
+    container_name: sms_elasticsearch
+    restart: unless-stopped
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+    ports: ['9200:9200']
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ['CMD-SHELL', 'curl -s http://localhost:9200/_cluster/health | grep -q "green\|yellow"']
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  logstash:
+    image: docker.elastic.co/logstash/logstash:8.14.0
+    container_name: sms_logstash
+    restart: unless-stopped
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    ports: ['5044:5044', '9600:9600']
+    volumes:
+      - ./monitoring/logstash/pipeline:/usr/share/logstash/pipeline:ro
+      - ./logs:/logs:ro
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.14.0
+    container_name: sms_kibana
+    restart: unless-stopped
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    ports: ['5601:5601']
+    environment:
+      ELASTICSEARCH_HOSTS: http://elasticsearch:9200
+
+  # ─── Microservice: Notifications ────────────────────────────────────────────
+  notifications-service:
+    build:
+      context: ./services/notifications
+      dockerfile: Dockerfile
+    container_name: sms_notifications_svc
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+    env_file: .env
+    environment:
+      REDIS_URL: redis://redis:6379
+      PORT: '5010'
+    ports: ['5010:5010']
+
+  # ─── Error Tracking ─────────────────────────────────────────────────────────
+  # Sentry is SaaS — configure SENTRY_DSN in .env
+  # Uncomment below to self-host Sentry OSS instead:
+  # sentry: ...
+
+volumes:
+  postgres_data:
+  redis_data:
+  prometheus_data:
+  grafana_data:
+  elasticsearch_data:

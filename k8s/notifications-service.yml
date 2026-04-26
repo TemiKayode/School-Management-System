@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sms-notifications
+  namespace: school-sms
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: sms-notifications
+  template:
+    metadata:
+      labels:
+        app: sms-notifications
+    spec:
+      containers:
+        - name: notifications
+          image: your-registry/sms-notifications:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 5010
+          envFrom:
+            - secretRef:
+                name: sms-secrets
+          env:
+            - name: PORT
+              value: '5010'
+            - name: SERVICE_NAME
+              value: notifications
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 5010
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: notifications-service
+  namespace: school-sms
+spec:
+  selector:
+    app: sms-notifications
+  ports:
+    - port: 5010
+      targetPort: 5010

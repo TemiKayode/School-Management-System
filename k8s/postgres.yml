@@ -1,0 +1,62 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-pvc
+  namespace: school-sms
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 20Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+  namespace: school-sms
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          env:
+            - name: POSTGRES_USER
+              value: sms_user
+            - name: POSTGRES_PASSWORD
+              value: sms_pass
+            - name: POSTGRES_DB
+              value: school_db
+          ports:
+            - containerPort: 5432
+          volumeMounts:
+            - name: postgres-storage
+              mountPath: /var/lib/postgresql/data
+          readinessProbe:
+            exec:
+              command: ['pg_isready', '-U', 'sms_user']
+            initialDelaySeconds: 10
+            periodSeconds: 5
+      volumes:
+        - name: postgres-storage
+          persistentVolumeClaim:
+            claimName: postgres-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-service
+  namespace: school-sms
+spec:
+  selector:
+    app: postgres
+  ports:
+    - port: 5432
+      targetPort: 5432

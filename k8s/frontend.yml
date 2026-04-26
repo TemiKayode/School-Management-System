@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sms-frontend
+  namespace: school-sms
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: sms-frontend
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: sms-frontend
+    spec:
+      containers:
+        - name: frontend
+          image: your-registry/sms-frontend:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 3000
+          env:
+            - name: NEXT_PUBLIC_API_URL
+              value: 'https://yourdomain.com/api/v1'
+            - name: NEXT_TELEMETRY_DISABLED
+              value: '1'
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend-service
+  namespace: school-sms
+spec:
+  selector:
+    app: sms-frontend
+  ports:
+    - port: 3000
+      targetPort: 3000

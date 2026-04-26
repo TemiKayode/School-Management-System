@@ -1,0 +1,9 @@
+apiVersion: 1
+
+providers:
+  - name: SMS Dashboards
+    orgId: 1
+    folder: School SMS
+    type: file
+    options:
+      path: /etc/grafana/provisioning/dashboards
