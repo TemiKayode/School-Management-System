@@ -1,6 +1,5 @@
 [build]
-  base      = "frontend"
-  command   = "npm ci && npx next build"
+  command   = "npm install && cd frontend && npx next build"
   publish   = "frontend/.next"
 
 [build.environment]
