@@ -4,12 +4,16 @@ const { withSentryConfig } = require('@sentry/nextjs');
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  output: 'standalone',
+  // standalone output for Docker; Netlify handles its own bundling without it
+  ...(process.env.NEXT_OUTPUT === 'standalone' ? { output: 'standalone' } : {}),
   experimental: {
     instrumentationHook: true,
   },
   images: {
-    domains: ['localhost', 'school-management-files.s3.amazonaws.com'],
+    remotePatterns: [
+      { protocol: 'http',  hostname: 'localhost' },
+      { protocol: 'https', hostname: 'school-management-files.s3.amazonaws.com' },
+    ],
   },
   async rewrites() {
     return [
@@ -37,7 +41,4 @@ module.exports = withSentryConfig(nextConfig, {
 
   // Reduce logger noise
   disableLogger: true,
-
-  // Enable automatic instrumentation of Vercel Cron Monitors
-  automaticVercelMonitors: true,
 });

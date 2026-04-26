@@ -6,6 +6,8 @@ RUN npm ci
 FROM base AS builder
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
+# output: standalone is set via env so Docker gets it, Netlify does not
+ENV NEXT_OUTPUT=standalone
 RUN npm run build
 
 FROM node:20-alpine AS runner
