@@ -1,7 +1,7 @@
 import { Response, NextFunction } from 'express';
 import { AuthRequest } from '../../middleware/auth';
 import prisma from '../../config/database';
-import { sendSuccess, sendPaginated } from '../../utils/apiResponse';
+import { sendSuccess, sendPaginated, sendError } from '../../utils/apiResponse';
 import { withCache, invalidate, invalidatePattern } from '../../utils/cache';
 import bcrypt from 'bcryptjs';
 
@@ -40,8 +40,11 @@ export async function create(req: AuthRequest, res: Response, next: NextFunction
   try {
     const { name, email, password, admissionNo, classId, parentName, parentPhone, parentEmail, gender, dateOfBirth } = req.body;
 
-    if (!name || !email) {
-      return sendSuccess(res, null, 'Name and email are required', 400);
+    if (!name || !email) return sendError(res, 'Name and email are required', 400);
+
+    if (classId) {
+      const cls = await prisma.class.findUnique({ where: { id: classId }, select: { id: true } });
+      if (!cls) return sendError(res, 'Invalid classId', 400);
     }
 
     const existingUser = await prisma.user.findUnique({ where: { email } });

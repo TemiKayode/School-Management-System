@@ -122,6 +122,9 @@ function UserMenu({ onClose }: { onClose: () => void }) {
     PARENT:  { color: 'text-orange-700', bg: 'bg-orange-50' },
   };
   const meta = roleMeta[user?.role || ''] || { color: 'text-gray-600', bg: 'bg-gray-100' };
+  const roleLabel = user?.role
+    ? `${user.role.charAt(0)}${user.role.slice(1).toLowerCase()}`
+    : 'User';
 
   return (
     <div className="absolute right-0 top-full mt-2 w-60 bg-white rounded-2xl shadow-card-lg border border-gray-100 overflow-hidden animate-slide-down z-50">
@@ -136,7 +139,7 @@ function UserMenu({ onClose }: { onClose: () => void }) {
           </div>
         </div>
         <span className={cn('mt-2 inline-block text-2xs font-semibold px-2 py-0.5 rounded-full', meta.bg, meta.color)}>
-          {user?.role?.charAt(0) + user?.role?.slice(1).toLowerCase()}
+          {roleLabel}
         </span>
       </div>
       <div className="py-1.5">

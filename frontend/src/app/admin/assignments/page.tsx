@@ -127,7 +127,7 @@ function SubmissionsPanel({ assignment, onClose }: { assignment: Assignment; onC
                           )}
                         </div>
                         {sub.content && <p className="text-xs text-gray-500 mt-2 line-clamp-2">{sub.content}</p>}
-                        {sub.feedback && <p className="text-xs text-green-600 mt-1 italic">"{sub.feedback}"</p>}
+                        {sub.feedback && <p className="text-xs text-green-600 mt-1 italic">&quot;{sub.feedback}&quot;</p>}
 
                         {gradingId === sub.id && (
                           <div className="mt-3 space-y-2 border-t border-gray-50 pt-3">

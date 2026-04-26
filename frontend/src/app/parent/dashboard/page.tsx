@@ -316,7 +316,7 @@ export default function ParentDashboard() {
           </div>
           <h3 className="font-semibold text-gray-700">No children linked</h3>
           <p className="text-gray-400 text-sm mt-2 max-w-xs mx-auto">
-            Contact the school administrator to link your account to your child's record.
+            Contact the school administrator to link your account to your child&apos;s record.
           </p>
         </div>
       </DashboardLayout>

@@ -141,7 +141,7 @@ export default function TeacherDashboard() {
           {/* Today's Schedule */}
           <div className="card xl:col-span-1">
             <div className="section-header">
-              <h3 className="section-title">Today's Schedule</h3>
+              <h3 className="section-title">Today&apos;s Schedule</h3>
               <Link href="/admin/timetable" className="section-action">View all <ChevronRight className="w-3 h-3" /></Link>
             </div>
             {todaySlots.length === 0 ? (

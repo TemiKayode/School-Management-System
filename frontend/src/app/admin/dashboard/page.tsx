@@ -185,7 +185,7 @@ export default function AdminDashboard() {
           <div className="card flex flex-col">
             <div className="flex items-center justify-between mb-5">
               <div>
-                <h3 className="font-semibold text-gray-900">Today's Attendance</h3>
+                <h3 className="font-semibold text-gray-900">Today&apos;s Attendance</h3>
                 <p className="text-xs text-gray-400 mt-0.5">{new Date().toLocaleDateString('en', { dateStyle: 'long' })}</p>
               </div>
             </div>

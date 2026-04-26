@@ -1,4 +1,5 @@
 import { Response, NextFunction } from 'express';
+import { Prisma } from '@prisma/client';
 import { AuthRequest } from '../../middleware/auth';
 import prisma from '../../config/database';
 import { sendSuccess } from '../../utils/apiResponse';
@@ -13,7 +14,13 @@ export async function list(req: AuthRequest, res: Response, next: NextFunction) 
       take: 50,
     });
     return sendSuccess(res, notifications);
-  } catch (err) { next(err); }
+  } catch (err) {
+    // Handle environments where migrations are pending to avoid hard dashboard failure.
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2021') {
+      return sendSuccess(res, []);
+    }
+    next(err);
+  }
 }
 
 export async function broadcast(req: AuthRequest, res: Response, next: NextFunction) {

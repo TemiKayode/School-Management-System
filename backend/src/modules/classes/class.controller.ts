@@ -1,7 +1,7 @@
 import { Response, NextFunction } from 'express';
 import { AuthRequest } from '../../middleware/auth';
 import prisma from '../../config/database';
-import { sendSuccess, sendPaginated } from '../../utils/apiResponse';
+import { sendSuccess, sendPaginated, sendError } from '../../utils/apiResponse';
 import { withCache, invalidate, invalidatePattern } from '../../utils/cache';
 
 export async function list(req: AuthRequest, res: Response, next: NextFunction) {
@@ -25,6 +25,13 @@ export async function list(req: AuthRequest, res: Response, next: NextFunction) 
 export async function create(req: AuthRequest, res: Response, next: NextFunction) {
   try {
     const { name, grade, section, teacherId, academicYear, subjectIds } = req.body;
+    if (!name || !grade) return sendError(res, 'name and grade are required', 400);
+
+    if (teacherId) {
+      const teacher = await prisma.teacher.findUnique({ where: { id: teacherId }, select: { id: true } });
+      if (!teacher) return sendError(res, 'Invalid teacherId', 400);
+    }
+
     const cls = await prisma.class.create({
       data: {
         name, grade, section,
@@ -42,11 +49,12 @@ export async function create(req: AuthRequest, res: Response, next: NextFunction
 export async function getOne(req: AuthRequest, res: Response, next: NextFunction) {
   try {
     const cls = await withCache(`classes:${req.params.id}`, 300, () =>
-      prisma.class.findUniqueOrThrow({
+      prisma.class.findUnique({
         where: { id: req.params.id },
         include: { teacher: true, subjects: true, _count: { select: { students: true } } },
       })
     );
+    if (!cls) return sendError(res, 'No Class found', 404);
     return sendSuccess(res, cls);
   } catch (err) { next(err); }
 }

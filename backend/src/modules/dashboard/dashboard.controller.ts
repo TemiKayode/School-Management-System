@@ -1,4 +1,5 @@
 import { Response, NextFunction } from 'express';
+import { Prisma } from '@prisma/client';
 import { AuthRequest } from '../../middleware/auth';
 import prisma from '../../config/database';
 import { sendSuccess } from '../../utils/apiResponse';
@@ -87,5 +88,18 @@ export async function getStats(req: AuthRequest, res: Response, next: NextFuncti
     });
 
     return sendSuccess(res, stats);
-  } catch (err) { next(err); }
+  } catch (err) {
+    // If DB schema isn't fully migrated in an environment, return safe defaults.
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2021') {
+      return sendSuccess(res, {
+        totalStudents: 0,
+        totalTeachers: 0,
+        attendanceToday: {},
+        pendingFees: { total: 0, count: 0 },
+        recentExams: [],
+        unreadNotifications: 0,
+      });
+    }
+    next(err);
+  }
 }

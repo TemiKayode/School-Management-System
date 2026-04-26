@@ -404,7 +404,7 @@ export default function StudentDashboard() {
             <div className="card">
               <div className="section-header">
                 <div>
-                  <h3 className="section-title">Today's Schedule</h3>
+                  <h3 className="section-title">Today&apos;s Schedule</h3>
                   <p className="text-2xs text-gray-400 mt-0.5">{today.toLocaleDateString('en', { weekday: 'long' })}</p>
                 </div>
                 <a href="/student/timetable" className="section-action">

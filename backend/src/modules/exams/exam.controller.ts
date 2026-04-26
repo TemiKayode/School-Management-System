@@ -1,7 +1,7 @@
 import { Response, NextFunction } from 'express';
 import { AuthRequest } from '../../middleware/auth';
 import prisma from '../../config/database';
-import { sendSuccess, sendPaginated } from '../../utils/apiResponse';
+import { sendSuccess, sendPaginated, sendError } from '../../utils/apiResponse';
 
 export async function list(req: AuthRequest, res: Response, next: NextFunction) {
   try {
@@ -28,10 +28,11 @@ export async function create(req: AuthRequest, res: Response, next: NextFunction
 
 export async function getOne(req: AuthRequest, res: Response, next: NextFunction) {
   try {
-    const exam = await prisma.exam.findUniqueOrThrow({
+    const exam = await prisma.exam.findUnique({
       where: { id: req.params.id },
       include: { subject: true, class: true },
     });
+    if (!exam) return sendError(res, 'No Exam found', 404);
     return sendSuccess(res, exam);
   } catch (err) { next(err); }
 }
