@@ -1,6 +1,7 @@
 [build]
+  base      = "frontend"
   command   = "npm ci && npm run build"
-  publish   = ".next"
+  publish   = "frontend/.next"
 
 [build.environment]
   NODE_VERSION            = "20"
@@ -8,9 +9,6 @@
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
-
-# Redirect /api/* to the backend (set NEXT_PUBLIC_API_URL in Netlify env vars)
-# Netlify rewrites are handled by next.config.js rewrites() using NEXT_PUBLIC_API_URL
 
 [context.production.environment]
   NODE_ENV = "production"
