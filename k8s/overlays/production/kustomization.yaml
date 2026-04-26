@@ -1,0 +1,33 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+bases:
+  - ../../base
+
+# Production image overrides — set these to your actual registry
+images:
+  - name: schoolms/backend
+    newName: ghcr.io/your-org/schoolms-backend
+    newTag: latest
+  - name: schoolms/frontend
+    newName: ghcr.io/your-org/schoolms-frontend
+    newTag: latest
+
+# Production replica counts
+patches:
+  - patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: backend
+        namespace: schoolms
+      spec:
+        replicas: 3
+  - patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: frontend
+        namespace: schoolms
+      spec:
+        replicas: 2

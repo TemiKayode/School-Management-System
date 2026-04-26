@@ -5,7 +5,7 @@ import morgan from 'morgan';
 import compression from 'compression';
 import rateLimit from 'express-rate-limit';
 
-import { initSentry, sentryRequestHandler } from './utils/sentry';
+import { initSentry, setupSentryErrorHandler } from './utils/sentry';
 import { gdprHeaders, auditConsent } from './middleware/gdpr';
 import { metricsMiddleware, metricsHandler } from './utils/metrics';
 import { errorHandler } from './middleware/errorHandler';
@@ -112,8 +112,8 @@ app.use(`${api}/elearning`, elearningRoutes);
 app.use(`${api}/parent`, parentRoutes);
 app.use(`${api}/gdpr`, gdprRoutes);
 
-// Sentry error handler must be before custom error handler
-app.use(sentryRequestHandler());
+// Sentry v8 error handler (must be before custom error handler)
+setupSentryErrorHandler(app);
 app.use(notFound);
 app.use(errorHandler);
 

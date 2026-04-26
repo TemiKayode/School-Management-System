@@ -26,7 +26,7 @@ services:
     ports: ['6379:6379']
     volumes:
       - redis_data:/data
-    command: redis-server --appendonly yes
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
     healthcheck:
       test: ['CMD', 'redis-cli', 'ping']
       interval: 10s
@@ -38,6 +38,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+      target: runner
     container_name: sms_backend
     restart: unless-stopped
     depends_on:
@@ -45,36 +46,57 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    env_file: .env
+    env_file: ./backend/.env
     environment:
+      NODE_ENV: production
       DATABASE_URL: postgresql://sms_user:sms_pass@postgres:5432/school_db?schema=public
       REDIS_URL: redis://redis:6379
+      FRONTEND_URL: http://frontend:3000
     ports: ['5000:5000']
-    volumes:
-      - ./backend:/app
-      - /app/node_modules
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -qO- http://localhost:5000/health || exit 1']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      target: runner
     container_name: sms_frontend
     restart: unless-stopped
-    depends_on: [backend]
-    env_file: .env
+    depends_on:
+      backend:
+        condition: service_healthy
     environment:
+      NODE_ENV: production
       NEXT_PUBLIC_API_URL: /api/v1
     ports: ['3000:3000']
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -qO- http://localhost:3000 || exit 1']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
 
   nginx:
-    image: nginx:alpine
+    image: nginx:1.27-alpine
     container_name: sms_nginx
     restart: unless-stopped
-    depends_on: [backend, frontend]
+    depends_on:
+      - backend
+      - frontend
     ports: ['80:80', '443:443']
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/ssl:/etc/nginx/ssl:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'nginx -t 2>/dev/null && wget -qO- http://localhost/health || exit 1']
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   # ─── Monitoring ─────────────────────────────────────────────────────────────
   prometheus:

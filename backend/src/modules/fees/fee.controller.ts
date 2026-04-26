@@ -12,7 +12,10 @@ import {
   verifyFlutterwavePayment,
 } from '../../utils/payments';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '');
+function getStripe() {
+  if (!process.env.STRIPE_SECRET_KEY) throw new Error('STRIPE_SECRET_KEY not configured');
+  return new Stripe(process.env.STRIPE_SECRET_KEY);
+}
 
 export async function list(req: AuthRequest, res: Response, next: NextFunction) {
   try {
@@ -62,7 +65,7 @@ export async function recordPayment(req: AuthRequest, res: Response, next: NextF
 
     let stripePaymentIntentId: string | undefined;
     if (method === 'STRIPE') {
-      const intent = await stripe.paymentIntents.create({
+      const intent = await getStripe().paymentIntents.create({
         amount: Math.round(amount * 100),
         currency: 'usd',
         metadata: { studentId, feeId },
@@ -75,8 +78,7 @@ export async function recordPayment(req: AuthRequest, res: Response, next: NextF
       include: { student: true },
     });
 
-    // Notify via socket
-    getIO().to(`user:${studentId}`).emit('fee:payment', payment);
+    try { getIO().to(`user:${studentId}`).emit('fee:payment', payment); } catch { /* socket not init */ }
 
     return sendSuccess(res, payment, 'Payment recorded', 201);
   } catch (err) { next(err); }
@@ -85,7 +87,7 @@ export async function recordPayment(req: AuthRequest, res: Response, next: NextF
 export async function stripeWebhook(req: AuthRequest, res: Response, next: NextFunction) {
   try {
     const sig = req.headers['stripe-signature'] as string;
-    const event = stripe.webhooks.constructEvent(
+    const event = getStripe().webhooks.constructEvent(
       (req as any).rawBody,
       sig,
       process.env.STRIPE_WEBHOOK_SECRET!

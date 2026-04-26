@@ -29,3 +29,20 @@ Thumbs.db
 
 # Prisma
 backend/prisma/migrations/*.sql
+
+# SSL certificates (never commit private keys)
+nginx/ssl/
+
+# Coverage
+coverage/
+.nyc_output/
+
+# Sentry
+.sentryclirc
+
+# Docker build cache
+.dockerignore
+
+# Mobile
+mobile/node_modules/
+mobile/.expo/

@@ -13,7 +13,14 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: { default: 'SchoolMS', template: '%s · SchoolMS' },
   description: 'Comprehensive school management platform',
-  icons: { icon: '/favicon.ico' },
+  icons: {
+    icon: [
+      { url: '/favicon.svg', type: 'image/svg+xml' },
+      { url: '/favicon.ico', sizes: '32x32' },
+    ],
+    apple: '/apple-touch-icon.png',
+  },
+  manifest: '/site.webmanifest',
 };
 
 export const viewport: Viewport = {

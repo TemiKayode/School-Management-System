@@ -1,0 +1,173 @@
+name: CI/CD
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ${{ github.repository_owner }}/schoolms
+
+jobs:
+  # ── Lint & Test ─────────────────────────────────────────────────────────────
+  test-backend:
+    name: Backend Tests
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: sms_user
+          POSTGRES_PASSWORD: sms_pass
+          POSTGRES_DB: school_db_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports: ['5432:5432']
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports: ['6379:6379']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+        working-directory: backend
+      - run: npx prisma generate
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql://sms_user:sms_pass@localhost:5432/school_db_test
+      - run: npm run build
+        working-directory: backend
+      - run: npm test --if-present
+        working-directory: backend
+        env:
+          NODE_ENV: test
+          DATABASE_URL: postgresql://sms_user:sms_pass@localhost:5432/school_db_test
+          REDIS_URL: redis://localhost:6379
+          JWT_SECRET: test-jwt-secret-at-least-32-characters
+          REFRESH_TOKEN_SECRET: test-refresh-secret-at-least-32-chars
+
+  test-frontend:
+    name: Frontend Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+        working-directory: frontend
+      - run: npm run build
+        working-directory: frontend
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:5000/api/v1
+          NEXT_TELEMETRY_DISABLED: '1'
+
+  # ── Docker Build & Push ─────────────────────────────────────────────────────
+  docker:
+    name: Build & Push Docker Images
+    runs-on: ubuntu-latest
+    needs: [test-backend, test-frontend]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Extract metadata (backend)
+        id: meta-backend
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-backend
+          tags: |
+            type=sha,prefix=
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push backend
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          push: true
+          tags: ${{ steps.meta-backend.outputs.tags }}
+          labels: ${{ steps.meta-backend.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          target: runner
+
+      - name: Extract metadata (frontend)
+        id: meta-frontend
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-frontend
+          tags: |
+            type=sha,prefix=
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push frontend
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          push: true
+          tags: ${{ steps.meta-frontend.outputs.tags }}
+          labels: ${{ steps.meta-frontend.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          target: runner
+          build-args: |
+            NEXT_PUBLIC_API_URL=/api/v1
+            NEXT_TELEMETRY_DISABLED=1
+
+  # ── Deploy to Kubernetes ────────────────────────────────────────────────────
+  deploy:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [docker]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set image tags in kustomization
+        run: |
+          cd k8s/overlays/production
+          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+          kustomize edit set image \
+            schoolms/backend=ghcr.io/${{ github.repository_owner }}/schoolms-backend:${SHORT_SHA} \
+            schoolms/frontend=ghcr.io/${{ github.repository_owner }}/schoolms-frontend:${SHORT_SHA}
+
+      - name: Deploy to Kubernetes
+        uses: azure/k8s-deploy@v4
+        with:
+          namespace: schoolms
+          manifests: |
+            k8s/base/namespace.yaml
+          # Add your kubeconfig secret: secrets.KUBECONFIG
+        env:
+          KUBECONFIG: ${{ secrets.KUBECONFIG }}
+        continue-on-error: true
