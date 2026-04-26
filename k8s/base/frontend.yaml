@@ -64,7 +64,7 @@ metadata:
   namespace: schoolms
 type: Opaque
 stringData:
-  NEXT_PUBLIC_SENTRY_DSN: https://e9d7f4e9cb499dc2deef143e72397065@o4509921943158784.ingest.us.sentry.io/4511285682241536
+  NEXT_PUBLIC_SENTRY_DSN: https://146bc222f76d737247dc83017a701ee9@o4509921943158784.ingest.us.sentry.io/4511287040540672
 ---
 apiVersion: v1
 kind: Service
