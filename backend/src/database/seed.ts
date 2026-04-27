@@ -288,6 +288,8 @@ async function main() {
   console.log('        6 books · 3 transport routes · 4 courses · 4 announcements');
 }
 
+export { main };
+
 main()
   .catch(console.error)
   .finally(() => prisma.$disconnect());

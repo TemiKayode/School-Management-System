@@ -13,6 +13,7 @@ async function bootstrap() {
   await connectDatabase();
   await connectRedis();
 
+
   const server = http.createServer(app);
   initSocketIO(server);
 
