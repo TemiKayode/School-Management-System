@@ -9,6 +9,22 @@ A production-ready, full-stack school management platform with role-based dashbo
 
 ---
 
+## Screenshots
+
+### Login Page
+![Login Page](docs/screenshots/login.png)
+
+### Admin Dashboard
+![Admin Dashboard](docs/screenshots/admin-dashboard.png)
+
+### Teacher Dashboard
+![Teacher Dashboard](docs/screenshots/teacher-dashboard.png)
+
+### Student Dashboard
+![Student Dashboard](docs/screenshots/student-dashboard.png)
+
+---
+
 ## Table of Contents
 
 - [Demo Credentials](#demo-credentials)
