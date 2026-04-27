@@ -5,7 +5,7 @@ export function sendSuccess<T>(res: Response, data: T, message = 'Success', stat
 }
 
 export function sendError(res: Response, message: string, statusCode = 400, errors?: unknown) {
-  return res.status(statusCode).json({ success: false, message, ...(errors && { errors }) });
+  return res.status(statusCode).json({ success: false, message, ...(errors ? { errors } : {}) });
 }
 
 export function sendPaginated<T>(

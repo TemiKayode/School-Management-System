@@ -26,11 +26,11 @@ export async function getChildOverview(req: AuthRequest, res: Response, next: Ne
     const { studentId } = req.params;
     const today = new Date(); today.setHours(0, 0, 0, 0);
 
-    const [student, attendanceSummary, recentGrades, pendingFees, upcomingAssignments] = await Promise.all([
-      prisma.student.findUniqueOrThrow({
-        where: { id: studentId },
-        include: { user: true, class: true },
-      }),
+    const student = await prisma.student.findUniqueOrThrow({
+      where: { id: studentId },
+      include: { user: true, class: true },
+    });
+    const [attendanceSummary, recentGrades, pendingFees, upcomingAssignments] = await Promise.all([
       prisma.attendance.groupBy({ by: ['status'], where: { studentId }, _count: { status: true } }),
       prisma.examResult.findMany({ where: { studentId }, include: { exam: { include: { subject: true } } }, orderBy: { createdAt: 'desc' }, take: 5 }),
       prisma.feePayment.aggregate({ where: { studentId, status: 'PENDING' }, _sum: { amount: true }, _count: true }),

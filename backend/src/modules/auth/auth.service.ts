@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import { authenticator } from 'otplib';
 import QRCode from 'qrcode';
 import prisma from '../../config/database';
+import { Role } from '@prisma/client';
 import { getRedis } from '../../config/redis';
 import { signToken, signRefreshToken, verifyRefreshToken } from '../../utils/jwt';
 import { AppError } from '../../middleware/errorHandler';
@@ -20,7 +21,7 @@ export async function register(data: {
 
   const hash = await bcrypt.hash(data.password, 12);
   const user = await prisma.user.create({
-    data: { ...data, password: hash },
+    data: { ...data, password: hash, role: data.role as Role },
     select: { id: true, name: true, email: true, role: true, createdAt: true },
   });
   return user;

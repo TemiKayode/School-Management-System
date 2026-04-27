@@ -25,7 +25,7 @@ export function initSentry(app: Express) {
     dsn: process.env.SENTRY_DSN,
     integrations: [
       Sentry.httpIntegration(),
-      Sentry.expressIntegration({ app }),
+      Sentry.expressIntegration(),
       ...(profiling ? [profiling] : []),
     ],
     tracesSampleRate: process.env.NODE_ENV === 'production' ? 0.2 : 1.0,
