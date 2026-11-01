@@ -79,7 +79,7 @@ jobs:
     name: Build & Push Docker Images
     runs-on: ubuntu-latest
     needs: [test-backend, test-frontend]
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    if: ${{ false }}
     permissions:
       contents: read
       packages: write
@@ -144,7 +144,7 @@ jobs:
     name: Deploy to Production
     runs-on: ubuntu-latest
     needs: [docker]
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    if: ${{ false }}
     environment: production
     steps:
       - uses: actions/checkout@v4
