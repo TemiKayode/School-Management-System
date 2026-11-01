@@ -275,7 +275,11 @@ export default function AssignmentsPage() {
   });
 
   const create = useMutation({
-    mutationFn: (body: typeof form) => api.post('/assignments', { ...body, totalPoints: Number(body.totalPoints) }),
+    mutationFn: (body: typeof form) => api.post('/assignments', {
+      ...body,
+      dueDate: new Date(body.dueDate).toISOString(),
+      totalPoints: Number(body.totalPoints),
+    }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['assignments'] }); setShowAdd(false); setForm(EMPTY_FORM); },
   });
 
@@ -408,12 +412,17 @@ export default function AssignmentsPage() {
                 <input className="input" type="number" min="1" value={form.totalPoints} onChange={e => setForm(f => ({ ...f, totalPoints: e.target.value }))} />
               </div>
             </div>
+            {create.isError && (
+              <p className="text-sm text-red-600" role="alert">
+                Couldn’t create the assignment. Please check the details and try again.
+              </p>
+            )}
           </div>
           <div className="flex gap-3 mt-6">
-            <button className="btn-secondary flex-1" onClick={() => { setShowAdd(false); setForm(EMPTY_FORM); }}>Cancel</button>
+            <button className="btn-secondary flex-1" onClick={() => { setShowAdd(false); setForm(EMPTY_FORM); create.reset(); }}>Cancel</button>
             <button
               className="btn-primary flex-1"
-              disabled={!form.title || !form.dueDate || !form.classId || create.isPending}
+              disabled={!form.title.trim() || !form.dueDate || !form.subjectId || !form.classId || create.isPending}
               onClick={() => create.mutate(form)}
             >
               {create.isPending ? 'Creating…' : 'Create Assignment'}
