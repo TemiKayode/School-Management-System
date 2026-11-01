@@ -41,7 +41,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-            - run: npm install
+      - run: npm install
         working-directory: backend
       - run: npx prisma generate
         working-directory: backend
@@ -66,7 +66,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-               - run: npm install
+      - run: npm install
         working-directory: frontend
       - run: npm run build
         working-directory: frontend
