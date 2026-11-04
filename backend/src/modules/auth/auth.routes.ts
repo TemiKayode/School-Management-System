@@ -1,12 +1,14 @@
 import { Router } from 'express';
 import * as authController from './auth.controller';
 import { authenticate } from '../../middleware/auth';
+import { authorize } from '../../middleware/rbac';
 import { validate } from '../../middleware/validate';
 import { loginSchema, registerSchema, changePasswordSchema } from './auth.schema';
 
 const router = Router();
 
-router.post('/register', validate(registerSchema), authController.register);
+// Accounts can only be created by an authenticated administrator.
+router.post('/register', authenticate, authorize('ADMIN'), validate(registerSchema), authController.register);
 router.post('/login', validate(loginSchema), authController.login);
 router.post('/refresh', authController.refreshToken);
 router.post('/logout', authenticate, authController.logout);

@@ -1,6 +1,7 @@
 import request from 'supertest';
 import bcrypt from 'bcryptjs';
 import app from '../../app';
+import { signToken } from '../../utils/jwt';
 
 // Mock Prisma and Redis for integration tests
 jest.mock('../../config/database', () => {
@@ -87,6 +88,11 @@ describe('POST /api/v1/auth/login', () => {
 });
 
 describe('POST /api/v1/auth/register', () => {
+  const adminToken = () =>
+    signToken({ id: 'admin-1', role: 'ADMIN', email: 'admin@test.com' });
+  const studentToken = () =>
+    signToken({ id: 'student-1', role: 'STUDENT', email: 'student@test.com' });
+
   beforeEach(() => {
     jest.clearAllMocks();
     mockPrisma.user.findUnique.mockResolvedValue(null);
@@ -99,28 +105,50 @@ describe('POST /api/v1/auth/register', () => {
     });
   });
 
-  it('creates a user and returns 201', async () => {
+  it('rejects registration without authentication', async () => {
     const res = await request(app)
       .post('/api/v1/auth/register')
+      .send({ name: 'New User', email: 'new@test.com', password: 'ValidPass@1', role: 'STUDENT' });
+
+    expect(res.status).toBe(401);
+    expect(mockPrisma.user.create).not.toHaveBeenCalled();
+  });
+
+  it('rejects authenticated non-admin users', async () => {
+    const res = await request(app)
+      .post('/api/v1/auth/register')
+      .set('Authorization', `Bearer ${studentToken()}`)
+      .send({ name: 'New User', email: 'new@test.com', password: 'ValidPass@1', role: 'STUDENT' });
+
+    expect(res.status).toBe(403);
+    expect(mockPrisma.user.create).not.toHaveBeenCalled();
+  });
+
+  it('allows an administrator to register a school account', async () => {
+    const res = await request(app)
+      .post('/api/v1/auth/register')
+      .set('Authorization', `Bearer ${adminToken()}`)
       .send({ name: 'New User', email: 'new@test.com', password: 'ValidPass@1', role: 'STUDENT' });
 
     expect(res.status).toBe(201);
     expect(res.body.success).toBe(true);
   });
 
-  it('returns 409 when email already exists', async () => {
+  it('returns 409 when an administrator registers an existing email', async () => {
     mockPrisma.user.findUnique.mockResolvedValue({ id: 'existing' });
     const res = await request(app)
       .post('/api/v1/auth/register')
+      .set('Authorization', `Bearer ${adminToken()}`)
       .send({ name: 'Dup', email: 'dup@test.com', password: 'ValidPass@1', role: 'STUDENT' });
 
     expect(res.status).toBe(409);
   });
 
-  it('rejects invalid role', async () => {
+  it('rejects invalid roles for administrators', async () => {
     const res = await request(app)
       .post('/api/v1/auth/register')
-      .send({ name: 'X', email: 'x@test.com', password: 'ValidPass@1', role: 'SUPERUSER' });
+      .set('Authorization', `Bearer ${adminToken()}`)
+      .send({ name: 'New User', email: 'new@test.com', password: 'ValidPass@1', role: 'ADMIN' });
 
     expect(res.status).toBe(422);
   });

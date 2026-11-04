@@ -47,6 +47,7 @@ const navGroups: NavGroup[] = [
     title: 'Academics',
     items: [
       { label: 'Classes',     href: '/admin/classes',     icon: Layers,          roles: ['ADMIN', 'TEACHER'] },
+      { label: 'Subjects',   href: '/admin/subjects',   icon: BookOpen,         roles: ['ADMIN'] },
       { label: 'Timetable',   href: '/admin/timetable',   icon: CalendarDays,    roles: ['ADMIN', 'TEACHER', 'STUDENT'] },
       { label: 'Attendance',  href: '/admin/attendance',  icon: UserCheck,       roles: ['ADMIN', 'TEACHER'] },
       { label: 'Exams',       href: '/admin/exams',       icon: ClipboardList,   roles: ['ADMIN', 'TEACHER', 'STUDENT'] },
